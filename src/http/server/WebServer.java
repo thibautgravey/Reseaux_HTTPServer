@@ -3,18 +3,22 @@
 package http.server;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Example program from Chapter 1 Programming Spiders, Bots and Aggregators in
  * Java Copyright 2001 by Jeff Heaton
- * 
+ *
  * WebServer is a very simple web-server. Any request is responded with a very
  * simple web-page.
- * 
+ *
  * @author Jeff Heaton
  * @version 1.0
  */
@@ -42,29 +46,7 @@ public class WebServer {
         // wait for a connection
         Socket remote = s.accept();
         // remote is now the connected socket
-        System.out.println("Connection, sending data.");
-        BufferedReader in = new BufferedReader(new InputStreamReader(
-            remote.getInputStream()));
-        PrintWriter out = new PrintWriter(remote.getOutputStream());
 
-        // read the data sent. We basically ignore it,
-        // stop reading once a blank line is hit. This
-        // blank line signals the end of the client HTTP
-        // headers.
-        String str = ".";
-        while (str != null && !str.equals(""))
-          str = in.readLine();
-
-        // Send the response
-        // Send the headers
-        out.println("HTTP/1.0 200 OK");
-        out.println("Content-Type: text/html");
-        out.println("Server: Bot");
-        // this blank line signals the end of the headers
-        out.println("");
-        // Send the HTML page
-        out.println("<H1>Welcome to the Ultra Mini-WebServer</H2>");
-        out.flush();
         remote.close();
       } catch (Exception e) {
         System.out.println("Error: " + e);
@@ -72,9 +54,73 @@ public class WebServer {
     }
   }
 
+  private void handleClientRequest(Socket client) throws IOException {
+    System.out.println("Connection, sending data.");
+    BufferedReader in = new BufferedReader(new InputStreamReader(
+            client.getInputStream()));
+
+    // read the data sent.
+    // stop reading once a blank line is hit. This
+    // blank line signals the end of the client HTTP
+    // headers.
+    String line = ".";
+    StringBuilder stringBuilder = new StringBuilder();
+    while (line != null && !line.equals("")) {
+      line = in.readLine();
+      stringBuilder.append(line).append("\n");
+    }
+
+    //Handle the request
+    String request = stringBuilder.toString();
+    System.out.println("Request :\n"+request);
+
+    //Parse the request
+    String[] requestsLines = request.split("\n");
+    String[] requestLine = requestsLines[0].split(" ");
+    String method = requestLine[0];
+    String path = requestLine[1];
+    String version = requestLine[2];
+    String host = requestsLines[1].split(" ")[1];
+
+    switch(method){
+      case "GET" :
+        Path filePath = getFilePath(path);
+        if (Files.exists(filePath)) { // if the file exist
+          String contentType = guessContentType(filePath);
+          sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath));
+        } else { // Error 404 not found
+          byte[] notFoundContent = "<h1>Not found :(</h1>".getBytes();
+          sendResponse(client, "404 Not Found", "text/html", notFoundContent);
+        }
+        break;
+    }
+  }
+
+  private static void sendResponse(Socket client, String status, String contentType, byte[] content) throws IOException {
+    PrintWriter out = new PrintWriter(client.getOutputStream());
+    out.println(("HTTP/1.1 \r\n" + status).getBytes());
+    out.println(("ContentType: " + contentType + "\r\n").getBytes());
+    out.println("\r\n".getBytes());
+    out.println(content);
+    out.println("\r\n\r\n".getBytes());
+    out.flush();
+  }
+
+  private static String guessContentType(Path filePath) throws IOException {
+    return Files.probeContentType(filePath);
+  }
+
+  private static Path getFilePath(String path) {
+    if ("/".equals(path)) {
+      path = "/index.html";
+    }
+    return Paths.get("/doc", path);
+  }
+
+
   /**
    * Start the application.
-   * 
+   *
    * @param args
    *            Command line parameters are not used.
    */

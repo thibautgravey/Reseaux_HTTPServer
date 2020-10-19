@@ -11,6 +11,8 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Example program from Chapter 1 Programming Spiders, Bots and Aggregators in
@@ -81,6 +83,12 @@ public class WebServer {
     String path = requestLine[1];
     String version = requestLine[2];
     String host = requestsLines[1].split(" ")[1];
+
+    List<String> headers = new ArrayList<>();
+    for (int h = 2; h < requestsLines.length; h++) {
+      String header = requestsLines[h];
+      headers.add(header);
+    }
 
     switch(method){
       case "GET" :

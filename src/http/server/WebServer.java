@@ -48,7 +48,7 @@ public class WebServer {
         // wait for a connection
         Socket remote = s.accept();
         // remote is now the connected socket
-
+        handleClientRequest(remote);
         remote.close();
       } catch (Exception e) {
         System.out.println("Error: " + e);
@@ -77,31 +77,42 @@ public class WebServer {
     System.out.println("Request :\n"+request);
 
     //Parse the request
-    String[] requestsLines = request.split("\n");
-    String[] requestLine = requestsLines[0].split(" ");
-    String method = requestLine[0];
-    String path = requestLine[1];
-    String version = requestLine[2];
-    String host = requestsLines[1].split(" ")[1];
+    String[] linesFromRequest = request.split("\n");
+    String[] singleLineRequest = linesFromRequest[0].split(" ");
+    String method = singleLineRequest[0];
+    System.out.println("Method : "+method);
+    String path = singleLineRequest[1];
+    System.out.println("Path : "+path);
+    String version = singleLineRequest[2];
+    System.out.println("Version : "+version);
+    String host = linesFromRequest[1].split(" ")[1];
+    System.out.println("host : "+host);
 
     List<String> headers = new ArrayList<>();
-    for (int h = 2; h < requestsLines.length; h++) {
-      String header = requestsLines[h];
+    System.out.println("Header : ");
+    for (int h = 2; h < linesFromRequest.length; h++) {
+      String header = linesFromRequest[h];
       headers.add(header);
+      System.out.println(header);
     }
+    System.out.println("---Fin Header---");
 
     switch(method){
       case "GET" :
-        Path filePath = getFilePath(path);
-        if (Files.exists(filePath)) { // if the file exist
-          String contentType = guessContentType(filePath);
-          sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath));
-        } else { // Error 404 not found
-          byte[] notFoundContent = "<h1>Not found :(</h1>".getBytes();
-          sendResponse(client, "404 Not Found", "text/html", notFoundContent);
-        }
+        handleGET(client,path);
         break;
     }
+  }
+
+  private static void handleGET(Socket client, String path) throws IOException {
+      Path filePath = getFilePath(path);
+      if (Files.exists(filePath)) { // if the file exist
+        String contentType = guessContentType(filePath);
+        sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath));
+      } else { // Error 404 not found
+        byte[] contentNotFound = "<h1>Not found :(</h1>".getBytes();
+        sendResponse(client, "404 Not Found", "text/html", contentNotFound);
+      }
   }
 
   private static void sendResponse(Socket client, String status, String contentType, byte[] content) throws IOException {
@@ -124,7 +135,6 @@ public class WebServer {
     }
     return Paths.get("/doc", path);
   }
-
 
   /**
    * Start the application.

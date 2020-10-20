@@ -9,11 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class WebServer {
 
@@ -23,20 +19,21 @@ public class WebServer {
     HEAD,
     POST,
     PUT,
-    DELETE
+    DELETE,
+    OPTIONS
   }
 
   /**
    * WebServer constructor.
    */
-  protected void start() {
+  protected void start(int port) {
     ServerSocket s;
 
-    System.out.println("Webserver starting up on port 3000");
+    System.out.println("Webserver starting up on port "+port);
     System.out.println("(press ctrl-c to exit)");
     try {
       // create the main server socket
-      s = new ServerSocket(3000);
+      s = new ServerSocket(port);
     } catch (Exception e) {
       System.out.println("Error: " + e);
       return;
@@ -50,7 +47,7 @@ public class WebServer {
         // remote is now the connected socket
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 remote.getInputStream()));
-
+        System.out.println("Connection, sending data.");
         // read the data sent.
         // stop reading once a blank line is hit. This
         // blank line signals the end of the client HTTP
@@ -78,6 +75,7 @@ public class WebServer {
 
         String request = stringBuilder.toString();
         System.out.println("Request :\n"+request);
+        System.out.println("Body :\n"+body);
 
         handleClientRequest(remote, request, body);
 
@@ -90,7 +88,7 @@ public class WebServer {
     }
   }
 
-  private void handleClientRequest(Socket client, String request,String body) throws IOException {
+  private void handleClientRequest(Socket client, String request,String body) {
     //Parse the request
     String[] linesFromRequest = request.split("\n");
     String[] singleLineRequest = linesFromRequest[0].split(" ");
@@ -98,7 +96,6 @@ public class WebServer {
     String path = singleLineRequest[1];
     String version = singleLineRequest[2];
     String host = linesFromRequest[1].split(" ")[1];
-
     
     List<String> headers = new ArrayList<>();
     for (int h = 2; h < linesFromRequest.length; h++) {
@@ -106,25 +103,42 @@ public class WebServer {
       headers.add(header);
     }
 
-
-    switch(method) {
-      case "GET":
-        handleGET(client, path);
-        break;
-      case "HEAD":
-        handleHEAD(client, path);
-        break;
-      case "DELETE":
-        handleDELETE(client, path);
-        break;
-      case "PUT" :
-        handlePUT(client, path,"");
-        break;
-      case "POST" :
-        handlePOST(client, path, body);
-        break;
-      default:
-        sendResponse(client, StatusCode.CODE_503, null, null, HeaderType.ERROR);
+    try {
+      if (!version.equals("HTTP/1.1")) {
+        sendResponse(client, StatusCode.CODE_505, null, null, HeaderType.ERROR);
+      } else {
+        switch (method) {
+          case "GET":
+            handleGET(client, path);
+            break;
+          case "HEAD":
+            handleHEAD(client, path);
+            break;
+          case "DELETE":
+            handleDELETE(client, path);
+            break;
+          case "PUT":
+            handlePUT(client, path, body);
+            break;
+          case "POST":
+            handlePOST(client, path, body);
+            break;
+          case "OPTIONS":
+            handleOPTION(client);
+            break;
+          default:
+            sendResponse(client, StatusCode.CODE_501, null, null, HeaderType.ERROR);
+        }
+      }
+    } catch (Exception e){
+      System.out.println("Error line "+e.getStackTrace()[0].getLineNumber()+" : " + e);
+      e.printStackTrace();
+      try{
+        sendResponse(client,StatusCode.CODE_500,null,null,HeaderType.ERROR);
+      } catch (IOException ioException) {
+        System.out.println("Error at sending "+StatusCode.CODE_500);
+        ioException.printStackTrace();
+      }
     }
   }
 
@@ -170,8 +184,14 @@ public class WebServer {
           signup(client,body);
           break;
       default:
-          sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
-          break;
+        StatusCode statusCode;
+        if(Files.exists(getFilePath(path))) {
+          statusCode = StatusCode.CODE_403;
+        } else {
+          statusCode = StatusCode.CODE_404;
+        }
+        sendResponse(client, statusCode, null, null, HeaderType.ERROR);
+        break;
     }
   }
 
@@ -201,15 +221,23 @@ public class WebServer {
     File file = filePath.toFile();
     StatusCode statusCode;
     if(file.createNewFile()){
-      System.out.println("File content replaced : "+filePath);
-      statusCode = StatusCode.CODE_200;
-    } else {
       System.out.println("File created : "+filePath);
       statusCode = StatusCode.CODE_201;
+    } else {
+      System.out.println("File content replaced : "+filePath);
+      statusCode = StatusCode.CODE_200;
     }
     BufferedWriter writer = new BufferedWriter((new FileWriter(file,false)));
+    if(body==null) body="";
     writer.write(body);
+    writer.flush();
+    writer.close();
+
     sendResponse(client, statusCode, null, null, HeaderType.PUT);
+  }
+
+  private void handleOPTION(Socket client) throws IOException {
+    sendResponse(client,StatusCode.CODE_200,null,null,HeaderType.OPTIONS);
   }
 
   private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {
@@ -225,9 +253,17 @@ public class WebServer {
     if(type.equals(HeaderType.GET) || type.equals(HeaderType.HEAD)) {
       out.println("Content-Type: " + contentType);
       out.println("Content-Encoding: UTF-8");
-      out.println("Content-Length: " + content.length);
     }
 
+    if(type.equals(HeaderType.OPTIONS)){
+      out.print("Allow: OPTIONS, GET, HEAD, POST, PUT, DELETE");
+    }
+
+    if(content!=null){
+      out.println("Content-Length: " + content.length);
+    } else {
+      out.println("Content-Length: 0");
+    }
     out.println("Server: Java Web Server (Unix) (H4411 B01)");
     out.println("Connection: close");
     out.println("");
@@ -249,11 +285,16 @@ public class WebServer {
   /**
    * Start the application.
    *
-   * @param args
-   *            Command line parameters are not used.
+   * @param args the port used to start the WebServer
    */
   public static void main(String args[]) {
+
+    if(args.length!=1){
+      System.out.println("Usage: java WebServer <port>");
+      System.exit(1);
+    }
+    int port = Integer.parseInt(args[0]);
     WebServer ws = new WebServer();
-    ws.start();
+    ws.start(port);
   }
 }

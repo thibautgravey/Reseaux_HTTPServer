@@ -13,12 +13,12 @@ package http.server;
 public enum StatusCode {
 
     CODE_200("200 OK"),
-    CODE_204("204 No Content"),
-    CODE_302("302 Found"),
+    CODE_201("201 Created"),
+    CODE_403("403 Forbidden"),
     CODE_404("404 Not Found"),
-    CODE_201("Created"),
     CODE_500("500 Internal Server Error"),
-    CODE_503("503 Service Unavailable");
+    CODE_501("501 Not Implemented"),
+    CODE_505("505 HTTP Version Not Supported");
 
     private final String text;
 

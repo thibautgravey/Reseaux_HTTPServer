@@ -103,6 +103,8 @@ public class WebServer {
       case "HEAD" :
         handleHEAD(client,path);
         break;
+      case "POST" :
+        //handlePOST(client, path);
       default:
         sendErrorResponse(client, "503 Service unavailable");
     }

@@ -2,25 +2,22 @@
 <html>
 
 	<head>
-		<title>Head</title>
+        <title>Signup</title>
+        <link rel="stylesheet" href="style.css">
 	</head>
 
-	<body>
-		Enter First Number: <input id="first">
-		Enter Second Number: <input id="second">
-		<button onclick="add()">Add</button>
-		Result is: <input id="answer">
+	<body>  
+        <h1> Bienvenue sur notre espace membre</h1>
 
-		<script>
-			function add(){
-			var a,b,c;
-			a=Number(document.getElementById("first").value);
-			b=Number(document.getElementById("second").value);
-			c= a + b;
-			document.getElementById("answer").value= c;
-			}
-		</script>
-
+        <form action="signup.php" method="post">
+            <input type="text" autocomplete="off" id="username"  required>
+            <label for="username">Username</label>
+            <input type="email" autocomplete="off" id="email" required>
+            <label for="email">Email</label>
+            <input type="password" id="password" required>
+            <label for="password">Password</label>
+            <input type="submit" value="Submit" id="submit">
+          </form>
 	</body>
 
 </html>

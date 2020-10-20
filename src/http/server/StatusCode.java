@@ -13,6 +13,9 @@ package http.server;
 public enum StatusCode {
 
     CODE_200("200 OK"),
+
+    CODE_204("204 No Content"),
+    CODE_302("302 Found"),
     CODE_404("404 Not Found"),
     CODE_500("500 Internal Server Error"),
     CODE_503("503 Service Unavailable");

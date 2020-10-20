@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 public class WebServer {
@@ -18,7 +20,8 @@ public class WebServer {
   enum HeaderType {
     ERROR,
     GET,
-    HEAD
+    HEAD,
+    POST
   }
 
   /**
@@ -46,7 +49,7 @@ public class WebServer {
         handleClientRequest(remote);
         remote.close();
       } catch (Exception e) {
-        System.out.println("Error: " + e);
+        System.out.println("Error here : " + e);
       }
     }
   }
@@ -62,14 +65,15 @@ public class WebServer {
     // headers.
     String line = ".";
     StringBuilder stringBuilder = new StringBuilder();
+
     while (line != null && !line.equals("")) {
       line = in.readLine();
       stringBuilder.append(line).append("\n");
     }
 
     //Handle the request
-    String request = stringBuilder.toString();
-    System.out.println("Request :\n"+request);
+      String request = stringBuilder.toString();
+     // System.out.println("Request :\n"+request);
 
     //Parse the request
     String[] linesFromRequest = request.split("\n");
@@ -85,12 +89,28 @@ public class WebServer {
 
     List<String> headers = new ArrayList<>();
     System.out.println("-----Header-----");
+    String headerLength = "0";
     for (int h = 2; h < linesFromRequest.length; h++) {
       String header = linesFromRequest[h];
       headers.add(header);
       System.out.println(header);
+      if(header.startsWith("Content-Length:")){
+         headerLength = header.substring(16);
+      }
     }
     System.out.println("---Fin Header---");
+
+    Integer bufferLength = Integer.parseInt(headerLength);
+    char[] buffer = null;
+    if(bufferLength > 0 ){
+      buffer = new char [bufferLength];
+      in.read(buffer, 0 ,bufferLength);
+    }
+    String body = null;
+    if(buffer!=null){
+       body = String.valueOf(buffer);
+    }
+    System.out.println("body : " + body);
 
     switch(method){
       case "GET" :
@@ -100,7 +120,8 @@ public class WebServer {
         handleHEAD(client,path);
         break;
       case "POST" :
-        //handlePOST(client, path);
+        handlePOST(client, path, body);
+        break;
       default:
         sendResponse(client, StatusCode.CODE_503,null,null,HeaderType.ERROR);
     }
@@ -140,7 +161,40 @@ public class WebServer {
         };
       }
     }
-	}
+  }
+  
+  private void handlePOST(Socket client,String path, String body) throws IOException {
+
+    switch (path){
+      case "/signup":
+          signup(client,body);
+          break;
+      default:
+          sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
+          break;
+    }
+  }
+
+  private void signup(Socket client,String body) throws IOException {
+    if(body != null){
+      File resource = new File("./res/user.txt");
+      BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(resource,true));
+      String[] parameters = body.split("&",10);
+
+      for(String param : parameters){
+          byte[] byteParam = (param + ";").getBytes();
+          fileOut.write(byteParam, 0, byteParam.length);
+      }
+      byte[] endLine = ("\r\n").getBytes();
+      fileOut.write(endLine, 0, endLine.length);
+      fileOut.flush();
+      fileOut.close();
+      byte[] successfulSignup = "<script>alert('Your account has been created');window.location.href = '/index.html';</script>".getBytes(StandardCharsets.UTF_8);
+      sendResponse(client, StatusCode.CODE_200,"text/html",successfulSignup,HeaderType.POST);
+    }else{
+      sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
+    }
+  }
 
   private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
@@ -161,7 +215,7 @@ public class WebServer {
     out.println("");
     out.flush();
 
-    if(type.equals(HeaderType.GET)){
+    if(type.equals(HeaderType.GET) || type.equals(HeaderType.POST)){
       binaryDataOutput.write(content,0,content.length);
       binaryDataOutput.flush();
     }

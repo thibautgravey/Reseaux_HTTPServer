@@ -1,0 +1,8 @@
+login=yann;email=moyeyeann%40gmail.com;password=123;
+login=martin;email=martin%40matin.com;password=martinmatin;
+login=yann;email=test%40test.test;password=test;
+login=pierre;email=pierre%40caillou.fr;password=helllo;
+login=test;email=test%40test.test;password=test;
+email=yo%40gl.fk;password=ekro;
+email=koi%40zrkf.oc;password=ekfd;
+email=;password=;

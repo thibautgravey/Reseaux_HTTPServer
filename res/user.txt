@@ -6,3 +6,4 @@ login=test;email=test%40test.test;password=test;
 email=yo%40gl.fk;password=ekro;
 email=koi%40zrkf.oc;password=ekfd;
 email=;password=;
+email=corentin%40gmail.com;password=new;

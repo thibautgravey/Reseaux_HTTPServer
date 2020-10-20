@@ -42,68 +42,50 @@ public class WebServer {
 
     System.out.println("Waiting for connection");
     for (;;) {
-      Socket remote = null;
       try {
         // wait for a connection
-        remote = s.accept();
+        Socket remote = s.accept();
         // remote is now the connected socket
-        handleClientRequest(remote);
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                remote.getInputStream()));
+
+        // read the data sent.
+        // stop reading once a blank line is hit. This
+        // blank line signals the end of the client HTTP
+        // headers.
+        String str = ".";
+        StringBuilder stringBuilder = new StringBuilder();
+        while (!(str=in.readLine()).isBlank()){
+            stringBuilder.append(str).append("\n");
+        }
+
+        String request = stringBuilder.toString();
+        System.out.println("Request :\n"+request);
+
+        handleClientRequest(remote, request);
+
+        // close the connection
+        remote.close();
       } catch (Exception e) {
-        System.out.println("Error: " + e);
-        try {
-          if(remote!=null) sendResponse(remote,StatusCode.CODE_500,null,null,HeaderType.ERROR);
-        } catch (IOException ioException) {
-          ioException.printStackTrace();
-        }
-      } finally {
-        try {
-          if(remote!=null) remote.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
+        System.out.println("Error line "+e.getStackTrace()[0].getLineNumber()+" : " + e);
       }
     }
   }
 
-  private void handleClientRequest(Socket client) throws IOException {
-    System.out.println("Connection, sending data.");
-    BufferedReader in = new BufferedReader(new InputStreamReader(
-            client.getInputStream()));
-
-    // read the data sent.
-    // stop reading once a blank line is hit. This
-    // blank line signals the end of the client HTTP
-    // headers.
-    String line = ".";
-    StringBuilder stringBuilder = new StringBuilder();
-    while(!(line=in.readLine()).isBlank()){
-      stringBuilder.append(line).append("\n");
-    }
-
-    //Handle the request
-    String request = stringBuilder.toString();
-    System.out.println("Request :\n"+request);
-
+  private void handleClientRequest(Socket client, String request) throws IOException {
     //Parse the request
     String[] linesFromRequest = request.split("\n");
     String[] singleLineRequest = linesFromRequest[0].split(" ");
     String method = singleLineRequest[0];
-    System.out.println("Method : "+method);
     String path = singleLineRequest[1];
-    System.out.println("Path : "+path);
     String version = singleLineRequest[2];
-    System.out.println("Version : "+version);
     String host = linesFromRequest[1].split(" ")[1];
-    System.out.println("host : "+host);
 
     List<String> headers = new ArrayList<>();
-    System.out.println("-----Header-----");
     for (int h = 2; h < linesFromRequest.length; h++) {
       String header = linesFromRequest[h];
       headers.add(header);
-      System.out.println(header);
     }
-    System.out.println("---Fin Header---");
 
     switch(method) {
       case "GET":

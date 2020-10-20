@@ -7,6 +7,7 @@ email=yo%40gl.fk;password=ekro;
 email=koi%40zrkf.oc;password=ekfd;
 email=;password=;
 email=corentin%40gmail.com;password=new;
+<<<<<<< HEAD
 login=;email=;password=;
 email=;password=;
 login=;email=;password=;
@@ -18,3 +19,6 @@ login=patric;
 login=;
 login=;
 login=Yann;
+=======
+login=thibaut;email=thibaut.gravey%40gmail.com;password=8dFcK5eEk8b6uqY;
+>>>>>>> a86d1f6e6a9a4e7690ce5c0eeec9ddff2837f7b1

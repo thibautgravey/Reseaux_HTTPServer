@@ -13,17 +13,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Example program from Chapter 1 Programming Spiders, Bots and Aggregators in
- * Java Copyright 2001 by Jeff Heaton
- *
- * WebServer is a very simple web-server. Any request is responded with a very
- * simple web-page.
- *
- * @author Jeff Heaton
- * @version 1.0
- */
 public class WebServer {
+
+  enum HeaderType {
+    ERROR,
+    GET,
+    HEAD
+  }
 
   /**
    * WebServer constructor.
@@ -88,7 +84,7 @@ public class WebServer {
     System.out.println("host : "+host);
 
     List<String> headers = new ArrayList<>();
-    System.out.println("Header : ");
+    System.out.println("-----Header-----");
     for (int h = 2; h < linesFromRequest.length; h++) {
       String header = linesFromRequest[h];
       headers.add(header);
@@ -104,23 +100,23 @@ public class WebServer {
         handleHEAD(client,path);
         break;
       default:
-        sendErrorResponse(client, "503 Service unavailable");
+        sendResponse(client, StatusCode.CODE_503,null,null,HeaderType.ERROR);
     }
   }
 
-  private static void handleGET(Socket client, String path) throws IOException {
+  private void handleGET(Socket client, String path) throws IOException {
       Path filePath = getFilePath(path);
       System.out.println("FilePath after guess : "+filePath);
       if (Files.exists(filePath)) { // if the file exist
         String contentType = Files.probeContentType(filePath);
-        sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath),"GET");
+        sendResponse(client, StatusCode.CODE_200, contentType, Files.readAllBytes(filePath),HeaderType.GET);
       } else { // Error 404 not found
         byte[] contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, "404 Not Found", "text/html", contentNotFound,"GET");
+        sendResponse(client, StatusCode.CODE_404, "text/html", contentNotFound,HeaderType.GET);
       }
   }
 
-  private static void handleHEAD(Socket client,String path) {
+  private void handleHEAD(Socket client,String path) {
     if(path != null){
       try {
         // V�rification de l'existence de la ressource demand�e
@@ -128,61 +124,52 @@ public class WebServer {
         System.out.println(filePath);
         if(Files.exists(filePath)) {
           String contentType = Files.probeContentType(filePath);
-          sendResponse(client, "200 OK", contentType,Files.readAllBytes(filePath),"HEAD");
+          sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),HeaderType.HEAD);
         } else {
-          sendErrorResponse(client, "404 Not Found");
+          sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
         }
 
       } catch (IOException e) {
         e.printStackTrace();
         try {
-          sendErrorResponse(client,"500 Internal Server Error");
-        } catch (Exception e2) {};
+          sendResponse(client,StatusCode.CODE_500, null,null,HeaderType.ERROR);
+        } catch (Exception e2) {
+          e2.printStackTrace();
+        };
       }
     }
 	}
-  
 
-  private static void sendErrorResponse(Socket client, String status) throws IOException {
-    PrintWriter out = new PrintWriter(client.getOutputStream());
-    Date date = new Date();
-
-    out.println("HTTP/1.1 "+status);
-    out.println("Date: "+date);
-    out.println("Server: Java Web Server (Unix) (H4411 B01)");
-    out.println("Connection: close");
-    out.println("");
-
-    out.flush();
-  }
-
-  private static void sendResponse(Socket client, String status, String contentType, byte[] content, String type) throws IOException {
+  private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
     BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
     Date date = new Date();
   
     out.println("HTTP/1.1 "+status);
     out.println("Date: "+date);
-    out.println("Content-Type: "+contentType);
-    out.println("Content-Encoding: UTF-8");
-    out.println("Content-Length: "+content.length);
+
+    if(type.equals(HeaderType.GET) || type.equals(HeaderType.HEAD)) {
+      out.println("Content-Type: " + contentType);
+      out.println("Content-Encoding: UTF-8");
+      out.println("Content-Length: " + content.length);
+    }
+
     out.println("Server: Java Web Server (Unix) (H4411 B01)");
     out.println("Connection: close");
     out.println("");
-
     out.flush();
 
-    if(type != "HEAD"){
+    if(type.equals(HeaderType.GET)){
       binaryDataOutput.write(content,0,content.length);
       binaryDataOutput.flush();
     }
   }
 
-  private static Path getFilePath(String path) {
+  private Path getFilePath(String path) {
     if ("/".equals(path)) {
       path = "/index.html";
     }
-    return Paths.get("./doc", path);
+    return Paths.get("./res", path);
   }
 
   /**

@@ -21,7 +21,9 @@ public class WebServer {
     ERROR,
     GET,
     HEAD,
-    POST
+    POST,
+    PUT,
+    DELETE
   }
 
   /**
@@ -46,84 +48,83 @@ public class WebServer {
         // wait for a connection
         Socket remote = s.accept();
         // remote is now the connected socket
-        handleClientRequest(remote);
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                remote.getInputStream()));
+
+        // read the data sent.
+        // stop reading once a blank line is hit. This
+        // blank line signals the end of the client HTTP
+        // headers.
+        String str = ".";
+        StringBuilder stringBuilder = new StringBuilder();
+        String headerLength = "0";
+        while (!(str=in.readLine()).isBlank()){
+            stringBuilder.append(str).append("\n");
+            if(str.startsWith("Content-Length:")){
+              headerLength = str.substring(16);
+           }
+        }
+
+        Integer bufferLength = Integer.parseInt(headerLength);
+        char[] buffer = null;
+        if(bufferLength > 0 ){
+          buffer = new char [bufferLength];
+          in.read(buffer, 0 ,bufferLength);
+        }
+        String body = null;
+        if(buffer!=null){
+          body = String.valueOf(buffer);
+        }
+
+        String request = stringBuilder.toString();
+        System.out.println("Request :\n"+request);
+
+        handleClientRequest(remote, request, body);
+
+        // close the connection
         remote.close();
       } catch (Exception e) {
-        System.out.println("Error here : " + e);
+        System.out.println("Error line "+e.getStackTrace()[0].getLineNumber()+" : " + e);
+        e.printStackTrace();
       }
     }
   }
 
-  private void handleClientRequest(Socket client) throws IOException {
-    System.out.println("Connection, sending data.");
-    BufferedReader in = new BufferedReader(new InputStreamReader(
-            client.getInputStream()));
-
-    // read the data sent.
-    // stop reading once a blank line is hit. This
-    // blank line signals the end of the client HTTP
-    // headers.
-    String line = ".";
-    StringBuilder stringBuilder = new StringBuilder();
-
-    while (line != null && !line.equals("")) {
-      line = in.readLine();
-      stringBuilder.append(line).append("\n");
-    }
-
-    //Handle the request
-      String request = stringBuilder.toString();
-     // System.out.println("Request :\n"+request);
-
+  private void handleClientRequest(Socket client, String request,String body) throws IOException {
     //Parse the request
     String[] linesFromRequest = request.split("\n");
     String[] singleLineRequest = linesFromRequest[0].split(" ");
     String method = singleLineRequest[0];
-    System.out.println("Method : "+method);
     String path = singleLineRequest[1];
-    System.out.println("Path : "+path);
     String version = singleLineRequest[2];
-    System.out.println("Version : "+version);
     String host = linesFromRequest[1].split(" ")[1];
-    System.out.println("host : "+host);
 
+    
     List<String> headers = new ArrayList<>();
-    System.out.println("-----Header-----");
-    String headerLength = "0";
     for (int h = 2; h < linesFromRequest.length; h++) {
       String header = linesFromRequest[h];
       headers.add(header);
-      System.out.println(header);
-      if(header.startsWith("Content-Length:")){
-         headerLength = header.substring(16);
-      }
     }
-    System.out.println("---Fin Header---");
 
-    Integer bufferLength = Integer.parseInt(headerLength);
-    char[] buffer = null;
-    if(bufferLength > 0 ){
-      buffer = new char [bufferLength];
-      in.read(buffer, 0 ,bufferLength);
-    }
-    String body = null;
-    if(buffer!=null){
-       body = String.valueOf(buffer);
-    }
-    System.out.println("body : " + body);
 
-    switch(method){
-      case "GET" :
-        handleGET(client,path);
+    switch(method) {
+      case "GET":
+        handleGET(client, path);
         break;
-      case "HEAD" :
-        handleHEAD(client,path);
+      case "HEAD":
+        handleHEAD(client, path);
+        break;
+      case "DELETE":
+        handleDELETE(client, path);
+        break;
+      case "PUT" :
+        handlePUT(client, path,"");
         break;
       case "POST" :
         handlePOST(client, path, body);
         break;
       default:
-        sendResponse(client, StatusCode.CODE_503,null,null,HeaderType.ERROR);
+        sendResponse(client, StatusCode.CODE_503, null, null, HeaderType.ERROR);
     }
   }
 
@@ -139,27 +140,26 @@ public class WebServer {
       }
   }
 
-  private void handleHEAD(Socket client,String path) {
-    if(path != null){
-      try {
-        // V�rification de l'existence de la ressource demand�e
-        Path filePath = getFilePath(path);
-        System.out.println(filePath);
-        if(Files.exists(filePath)) {
-          String contentType = Files.probeContentType(filePath);
-          sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),HeaderType.HEAD);
-        } else {
-          sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
-        }
+  private void handleHEAD(Socket client,String path) throws IOException {
+    Path filePath = getFilePath(path);
+    // Vérification de l'existence de la ressource demandée
+    if(Files.exists(filePath)) {
+      String contentType = Files.probeContentType(filePath);
+      sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),HeaderType.HEAD);
+    } else {
+      sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
+    }
+  }
 
-      } catch (IOException e) {
-        e.printStackTrace();
-        try {
-          sendResponse(client,StatusCode.CODE_500, null,null,HeaderType.ERROR);
-        } catch (Exception e2) {
-          e2.printStackTrace();
-        };
-      }
+  private void handleDELETE(Socket client, String path) throws IOException {
+    Path filePath = getFilePath(path);
+    if(Files.exists(filePath)){
+        System.out.println("DELETED file : "+filePath);
+        Files.delete(filePath);
+        sendResponse(client, StatusCode.CODE_200, null, null, HeaderType.DELETE);
+    } else {
+      System.out.println("File not found : "+filePath);
+      sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
     }
   }
   
@@ -196,11 +196,29 @@ public class WebServer {
     }
   }
 
+  private void handlePUT(Socket client, String path, String body) throws IOException {
+    Path filePath = getFilePath(path);
+    File file = filePath.toFile();
+    StatusCode statusCode;
+    if(file.createNewFile()){
+      System.out.println("File content replaced : "+filePath);
+      statusCode = StatusCode.CODE_200;
+    } else {
+      System.out.println("File created : "+filePath);
+      statusCode = StatusCode.CODE_201;
+    }
+    BufferedWriter writer = new BufferedWriter((new FileWriter(file,false)));
+    writer.write(body);
+    sendResponse(client, statusCode, null, null, HeaderType.PUT);
+  }
+
   private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
     BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
     Date date = new Date();
-  
+
+    System.out.println("Response with status code : "+status+" for header type : "+type);
+
     out.println("HTTP/1.1 "+status);
     out.println("Date: "+date);
 

@@ -165,20 +165,29 @@ public class WebServer {
   
   private void handlePOST(Socket client,String path, String body) throws IOException {
 
-    switch (path){
-      case "/signup":
-          signup(client,body);
-          break;
-      default:
-          sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
-          break;
+    if(path.endsWith(".txt")){
+      appendToFile(path, client, body);
+    }
+    else if(path.endsWith(".java")){
+      try{
+        String chemin ="java -classpath /media/corentin/Data/Cours/PR-Reseaux/TP/Serveur_HTTP/Reseaux_HTTPServer/bin source."+path.substring(1, path.length()-5) + " " + body;
+        String r = executeCommand(new String[]{"/bin/bash", "-c", chemin });
+        System.out.println("exécution du fichier externe:" + r);
+        byte[] successfulPOST = ("<h1> The script has executed correctly </h1>").getBytes(StandardCharsets.UTF_8);
+        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,HeaderType.POST);
+      }catch(Exception e){
+        e.printStackTrace();
+      }
+    }else{
+      sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
     }
   }
 
-  private void signup(Socket client,String body) throws IOException {
+  private void appendToFile(String path, Socket client,String body) throws IOException {
     if(body != null){
-      File resource = new File("./res/user.txt");
-      BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(resource,true));
+      File resource = new File(path);
+      boolean appendToFile = resource.exists();
+      BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(resource,appendToFile));
       String[] parameters = body.split("&",10);
 
       for(String param : parameters){
@@ -189,12 +198,38 @@ public class WebServer {
       fileOut.write(endLine, 0, endLine.length);
       fileOut.flush();
       fileOut.close();
-      byte[] successfulSignup = "<script>alert('Your account has been created');window.location.href = '/index.html';</script>".getBytes(StandardCharsets.UTF_8);
-      sendResponse(client, StatusCode.CODE_200,"text/html",successfulSignup,HeaderType.POST);
+      byte[] successfulPOST = ("<h1>The file " + path +" has been modified </h1>").getBytes(StandardCharsets.UTF_8);
+      sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,HeaderType.POST);
     }else{
       sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
     }
   }
+
+  public String executeCommand(String[] cmd) {
+    StringBuffer theRun = null;
+    try {
+        Process process = Runtime.getRuntime().exec(cmd);
+
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream()));
+        int read;
+        char[] buffer = new char[4096];
+        StringBuffer output = new StringBuffer();
+        while ((read = reader.read(buffer)) > 0) {
+            theRun = output.append(buffer, 0, read);
+        }
+        reader.close();
+        process.waitFor();
+
+    } catch (IOException e) {
+      System.out.println(e);
+        throw new RuntimeException(e);
+    } catch (InterruptedException e) {
+      System.out.println(e);
+        throw new RuntimeException(e);
+    }
+        return theRun.toString().trim();
+}
 
   private void handlePUT(Socket client, String path, String body) throws IOException {
     Path filePath = getFilePath(path);

@@ -68,6 +68,7 @@ public class WebServer {
         remote.close();
       } catch (Exception e) {
         System.out.println("Error line "+e.getStackTrace()[0].getLineNumber()+" : " + e);
+        e.printStackTrace();
       }
     }
   }
@@ -96,6 +97,9 @@ public class WebServer {
         break;
       case "DELETE":
         handleDELETE(client, path);
+        break;
+      case "PUT" :
+        handlePUT(client, path,"");
         break;
       case "POST" :
         //handlePOST(client, path);
@@ -132,11 +136,27 @@ public class WebServer {
     if(Files.exists(filePath)){
         System.out.println("DELETED file : "+filePath);
         Files.delete(filePath);
-        sendResponse(client, StatusCode.CODE_200, null, null, HeaderType.HEAD);
+        sendResponse(client, StatusCode.CODE_200, null, null, HeaderType.DELETE);
     } else {
       System.out.println("File not found : "+filePath);
       sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
     }
+  }
+
+  private void handlePUT(Socket client, String path, String body) throws IOException {
+    Path filePath = getFilePath(path);
+    File file = filePath.toFile();
+    StatusCode statusCode;
+    if(file.createNewFile()){
+      System.out.println("File content replaced : "+filePath);
+      statusCode = StatusCode.CODE_200;
+    } else {
+      System.out.println("File created : "+filePath);
+      statusCode = StatusCode.CODE_201;
+    }
+    BufferedWriter writer = new BufferedWriter((new FileWriter(file,false)));
+    writer.write(body);
+    sendResponse(client, statusCode, null, null, HeaderType.PUT);
   }
 
   private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {

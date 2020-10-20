@@ -18,7 +18,10 @@ public class WebServer {
   enum HeaderType {
     ERROR,
     GET,
-    HEAD
+    HEAD,
+    POST,
+    PUT,
+    DELETE
   }
 
   /**
@@ -39,14 +42,25 @@ public class WebServer {
 
     System.out.println("Waiting for connection");
     for (;;) {
+      Socket remote = null;
       try {
         // wait for a connection
-        Socket remote = s.accept();
+        remote = s.accept();
         // remote is now the connected socket
         handleClientRequest(remote);
-        remote.close();
       } catch (Exception e) {
         System.out.println("Error: " + e);
+        try {
+          if(remote!=null) sendResponse(remote,StatusCode.CODE_500,null,null,HeaderType.ERROR);
+        } catch (IOException ioException) {
+          ioException.printStackTrace();
+        }
+      } finally {
+        try {
+          if(remote!=null) remote.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
       }
     }
   }
@@ -62,8 +76,7 @@ public class WebServer {
     // headers.
     String line = ".";
     StringBuilder stringBuilder = new StringBuilder();
-    while (line != null && !line.equals("")) {
-      line = in.readLine();
+    while(!(line=in.readLine()).isBlank()){
       stringBuilder.append(line).append("\n");
     }
 
@@ -92,15 +105,18 @@ public class WebServer {
     }
     System.out.println("---Fin Header---");
 
-    switch(method){
-      case "GET" :
-        handleGET(client,path);
+    switch(method) {
+      case "GET":
+        handleGET(client, path);
         break;
-      case "HEAD" :
-        handleHEAD(client,path);
+      case "HEAD":
+        handleHEAD(client, path);
+        break;
+      case "DELETE":
+        handleDELETE(client, path);
         break;
       default:
-        sendResponse(client, StatusCode.CODE_503,null,null,HeaderType.ERROR);
+        sendResponse(client, StatusCode.CODE_503, null, null, HeaderType.ERROR);
     }
   }
 
@@ -116,35 +132,36 @@ public class WebServer {
       }
   }
 
-  private void handleHEAD(Socket client,String path) {
-    if(path != null){
-      try {
-        // V�rification de l'existence de la ressource demand�e
-        Path filePath = getFilePath(path);
-        System.out.println(filePath);
-        if(Files.exists(filePath)) {
-          String contentType = Files.probeContentType(filePath);
-          sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),HeaderType.HEAD);
-        } else {
-          sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
-        }
-
-      } catch (IOException e) {
-        e.printStackTrace();
-        try {
-          sendResponse(client,StatusCode.CODE_500, null,null,HeaderType.ERROR);
-        } catch (Exception e2) {
-          e2.printStackTrace();
-        };
-      }
+  private void handleHEAD(Socket client,String path) throws IOException {
+    Path filePath = getFilePath(path);
+    // Vérification de l'existence de la ressource demandée
+    if(Files.exists(filePath)) {
+      String contentType = Files.probeContentType(filePath);
+      sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),HeaderType.HEAD);
+    } else {
+      sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
     }
-	}
+  }
+
+  private void handleDELETE(Socket client, String path) throws IOException {
+    Path filePath = getFilePath(path);
+    if(Files.exists(filePath)){
+        System.out.println("DELETED file : "+filePath);
+        Files.delete(filePath);
+        sendResponse(client, StatusCode.CODE_200, null, null, HeaderType.HEAD);
+    } else {
+      System.out.println("File not found : "+filePath);
+      sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
+    }
+  }
 
   private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
     BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
     Date date = new Date();
-  
+
+    System.out.println("Response with status code : "+status+" for header type : "+type);
+
     out.println("HTTP/1.1 "+status);
     out.println("Date: "+date);
 

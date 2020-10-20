@@ -100,6 +100,11 @@ public class WebServer {
       case "GET" :
         handleGET(client,path);
         break;
+      case "HEAD" :
+        handleHEAD(client,path);
+        break;
+      default:
+        sendErrorResponse(client, "503 Service unavailable");
     }
   }
 
@@ -108,43 +113,54 @@ public class WebServer {
       System.out.println("FilePath after guess : "+filePath);
       if (Files.exists(filePath)) { // if the file exist
         String contentType = Files.probeContentType(filePath);
-        sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath));
+        sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath),"GET");
       } else { // Error 404 not found
-        byte[] contentNotFound = "<h1>Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, "404 Not Found", "text/html", contentNotFound);
+        byte[] contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
+        sendResponse(client, "404 Not Found", "text/html", contentNotFound,"GET");
       }
   }
 
-  private static void handleHEAD(BufferedInputStream in, BufferedOutputStream out, String filename) {
-		System.out.println("HEAD " + filename);
-		try {
-			// V�rification de l'existence de la ressource demand�e
-			File resource = new File(filename);
-			if(resource.exists() && resource.isFile()) {
-        // Envoi du Header signalant un succ�s (pas besoin de corps)
-				out.write(makeHeader("200 OK", filename, resource.length()).getBytes());
-			} else {
-				// Envoi du Header signalant une erreur (pas besoin de corps)
-			    out.write(makeHeader("404 Not Found").getBytes());
-			}
-			// Envoi des donn�es
-			out.flush();
-		} catch (IOException e) {
-			e.printStackTrace();
-			// En cas d'erreur on essaie d'avertir le client
-			try {
-				out.write(makeHeader("500 Internal Server Error").getBytes());
-				out.flush();
-			} catch (Exception e2) {};
-		}
+  private static void handleHEAD(Socket client,String path) {
+    if(path != null){
+      try {
+        // V�rification de l'existence de la ressource demand�e
+        Path filePath = getFilePath(path);
+        System.out.println(filePath);
+        if(Files.exists(filePath)) {
+          String contentType = Files.probeContentType(filePath);
+          sendResponse(client, "200 OK", contentType,Files.readAllBytes(filePath),"HEAD");
+        } else {
+          sendErrorResponse(client, "404 Not Found");
+        }
+
+      } catch (IOException e) {
+        e.printStackTrace();
+        try {
+          sendErrorResponse(client,"500 Internal Server Error");
+        } catch (Exception e2) {};
+      }
+    }
 	}
   
 
-  private static void sendResponse(Socket client, String status, String contentType, byte[] content) throws IOException {
+  private static void sendErrorResponse(Socket client, String status) throws IOException {
+    PrintWriter out = new PrintWriter(client.getOutputStream());
+    Date date = new Date();
+
+    out.println("HTTP/1.1 "+status);
+    out.println("Date: "+date);
+    out.println("Server: Java Web Server (Unix) (H4411 B01)");
+    out.println("Connection: close");
+    out.println("");
+
+    out.flush();
+  }
+
+  private static void sendResponse(Socket client, String status, String contentType, byte[] content, String type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
     BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
     Date date = new Date();
-
+  
     out.println("HTTP/1.1 "+status);
     out.println("Date: "+date);
     out.println("Content-Type: "+contentType);
@@ -156,8 +172,10 @@ public class WebServer {
 
     out.flush();
 
-    binaryDataOutput.write(content,0,content.length);
-    binaryDataOutput.flush();
+    if(type != "HEAD"){
+      binaryDataOutput.write(content,0,content.length);
+      binaryDataOutput.flush();
+    }
   }
 
   private static Path getFilePath(String path) {
@@ -166,52 +184,6 @@ public class WebServer {
     }
     return Paths.get("./doc", path);
   }
-
-  private static String makeHeader(String status) {
-		String header = "HTTP/1.0 " + status + "\r\n";
-		header += "Server: Bot\r\n";
-		header += "\r\n";
-		System.out.println("ANSWER HEADER :");
-		System.out.println(header);
-		return header;
-  }
-  
-  private static String makeHeader(String status, String filename, long length) {
-      String header = "HTTP/1.0 " + status + "\r\n";
-      if(filename.endsWith(".html") || filename.endsWith(".htm"))
-        header += "Content-Type: text/html\r\n";
-      else if(filename.endsWith(".mp4"))
-        header += "Content-Type: video/mp4\r\n";
-      else if(filename.endsWith(".png"))
-        header += "Content-Type: image/png\r\n";
-      else if(filename.endsWith(".jpeg") || filename.endsWith(".jpeg"))
-        header += "Content-Type: image/jpg\r\n";
-      else if(filename.endsWith(".mp3"))
-        header += "Content-Type: audio/mp3\r\n";
-      else if(filename.endsWith(".avi"))
-        header += "Content-Type: video/x-msvideo\r\n";
-      else if(filename.endsWith(".css"))
-        header += "Content-Type: text/css\r\n";
-      else if(filename.endsWith(".pdf"))
-        header += "Content-Type: application/pdf\r\n";
-      else if(filename.endsWith(".odt"))
-        header += "Content-Type: application/vnd.oasis.opendocument.text\r\n";
-      header += "Content-Length: " + length + "\r\n";
-      header += "Server: Bot\r\n";
-      header += "\r\n";
-      System.out.println("ANSWER HEADER :");
-      System.out.println(header);
-      return header;
-    }
-
-
-    private static String getContentType(String fileRequested) {
-
-      if (fileRequested.endsWith(".htm")  ||  fileRequested.endsWith(".html"))
-        return "text/html";
-      else
-        return "text/plain";
-    }
 
   /**
    * Start the application.

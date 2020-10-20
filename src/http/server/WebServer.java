@@ -115,6 +115,8 @@ public class WebServer {
       case "DELETE":
         handleDELETE(client, path);
         break;
+      case "POST" :
+        //handlePOST(client, path);
       default:
         sendResponse(client, StatusCode.CODE_503, null, null, HeaderType.ERROR);
     }

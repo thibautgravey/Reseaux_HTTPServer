@@ -2,16 +2,15 @@
 
 package http.server;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -106,34 +105,41 @@ public class WebServer {
 
   private static void handleGET(Socket client, String path) throws IOException {
       Path filePath = getFilePath(path);
+      System.out.println("FilePath after guess : "+filePath);
       if (Files.exists(filePath)) { // if the file exist
-        String contentType = guessContentType(filePath);
+        String contentType = Files.probeContentType(filePath);
         sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath));
       } else { // Error 404 not found
-        byte[] contentNotFound = "<h1>Not found :(</h1>".getBytes();
+        byte[] contentNotFound = "<h1>Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
         sendResponse(client, "404 Not Found", "text/html", contentNotFound);
       }
   }
 
   private static void sendResponse(Socket client, String status, String contentType, byte[] content) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
-    out.println(("HTTP/1.1 \r\n" + status).getBytes());
-    out.println(("ContentType: " + contentType + "\r\n").getBytes());
-    out.println("\r\n".getBytes());
-    out.println(content);
-    out.println("\r\n\r\n".getBytes());
-    out.flush();
-  }
+    BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
+    Date date = new Date();
 
-  private static String guessContentType(Path filePath) throws IOException {
-    return Files.probeContentType(filePath);
+    out.println("HTTP/1.1 "+status);
+    out.println("Date: "+date);
+    out.println("Content-Type: "+contentType);
+    out.println("Content-Encoding: UTF-8");
+    out.println("Content-Length: "+content.length);
+    out.println("Server: Java Web Server (Unix) (H4411 B01)");
+    out.println("Connection: close");
+    out.println("");
+
+    out.flush();
+
+    binaryDataOutput.write(content,0,content.length);
+    binaryDataOutput.flush();
   }
 
   private static Path getFilePath(String path) {
     if ("/".equals(path)) {
       path = "/index.html";
     }
-    return Paths.get("/doc", path);
+    return Paths.get("./doc", path);
   }
 
   /**

@@ -1,0 +1,16 @@
+login=yann;email=moyeyeann%40gmail.com;password=123;
+login=martin;email=martin%40matin.com;password=martinmatin;
+login=yann;email=test%40test.test;password=test;
+login=pierre;email=pierre%40caillou.fr;password=helllo;
+login=yann;email=moyeyann%40gmail.com;password=hrllo;
+login=coucou;email=moyeyann%40egk.fed;password=skeofisc;
+login=yann;email=moye%40fmzk.EFDC;password=SKODFC;
+login=yohan;email=coucou%40fmail.com;password=ejzif;
+login=patrick;email=coucou%40fmail.com;password=salut%3D;
+login=patrick;email=coucou%40fmail.com;password=marfj;
+login=sardin;email=c%40dfk.efkdc;password=oqjeisdfisc;
+login=pierre;email=fklsd%40elfd.fesdc;password=sklfldo;
+login=lskdf;email=psdfl%40sdfkv.qsdc;password=ldfk;
+login=patrick;email=ke%40dk.k;password=ksd;
+login=patrick;password=12349;
+login=Edward;password=ioijfed;

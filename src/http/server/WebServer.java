@@ -1,5 +1,14 @@
 package http.server;
 
+/**
+ * A simple HTTP Web Server in Java
+ * Supported HTTP methode : OPTIONS, GET, HEAD, POST, PUT, DELETE
+ *
+ * @author Branchereau Corentin
+ * @author Gravey Thibaut
+ * @version 1.0
+ */
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -8,15 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-
-/**
- * A simple HTTP Web Server in Java
- * Supported HTTP methods : OPTIONS, GET, HEAD, POST, PUT, DELETE
- *
- * @author Branchereau Corentin
- * @author Gravey Thibaut
- * @version 1.0
- */
 
 public class WebServer {
 
@@ -170,7 +170,12 @@ public class WebServer {
    * @throws IOException
    */
   private void handleGET(Socket client, String path) throws IOException {
-      Path filePath = getFilePath(path);
+      int paramIndex = path.indexOf("?");
+      String pathWithoutParam = path;
+      if(paramIndex != -1){
+         pathWithoutParam = path.substring(0,paramIndex);
+      }
+      Path filePath = getFilePath(pathWithoutParam);
       System.out.println("FilePath after guess : "+filePath);
       if(filePath.toString().equals("./res/index.html")){ //Generate a structured index
         String response = generateIndex();
@@ -229,20 +234,12 @@ public class WebServer {
    * @throws IOException
    */
   private void handlePOST(Socket client,String path, String body) throws IOException {
-
+    System.out.println(body);
     if(path.endsWith(".txt")){
       appendToFile(path, client, body);
     }
     else if(path.endsWith(".java")){
-      try{
-        String chemin ="java -classpath /media/corentin/Data/Cours/PR-Reseaux/TP/Serveur_HTTP/Reseaux_HTTPServer/bin source."+path.substring(1, path.length()-5) + " " + body;
-        String r = executeCommand(new String[]{"/bin/bash", "-c", chemin });
-        System.out.println("exécution du fichier externe:" + r);
-        byte[] successfulPOST = ("<h1> The script has executed correctly </h1>").getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,getFilePath(path).toString(),HeaderType.POST);
-      }catch(Exception e){
-        e.printStackTrace();
-      }
+      executeDynamicScript(client,path,body);
     }else{
       StatusCode statusCode;
       String contentLocation = null;
@@ -318,12 +315,27 @@ public class WebServer {
     }
   }
 
-  /**
-   * Execute a command on the server terminal on Runtime
-   * @param cmd the command to execute
-   * @return response from execution
-   */
-  public String executeCommand(String[] cmd) {
+  private void executeDynamicScript(Socket client,String path,String body){
+    try{
+      String[] parameters = body.split("&",10);
+      String arguments = "";
+      for(String param : parameters){
+        arguments += param +" ";
+      }
+      if(!arguments.equals("")){
+        String chemin ="java -classpath ./bin source."+path.substring(1, path.length()-5) + " " + arguments;
+        String response = executeCommand(new String[]{"/bin/bash", "-c", chemin });
+        byte[] successfulPOST = response.getBytes(StandardCharsets.UTF_8);
+        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,getFilePath(path).toString(),HeaderType.POST);
+      }else{
+        sendResponse(client, StatusCode.CODE_204,null,null,getFilePath(path).toString(),HeaderType.POST);
+      }
+    }catch(Exception e){
+      e.printStackTrace();
+    }
+  }
+
+  private String executeCommand(String[] cmd) {
     StringBuffer theRun = null;
     try {
         Process process = Runtime.getRuntime().exec(cmd);

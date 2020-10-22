@@ -1,6 +1,13 @@
-///A Simple Web Server (WebServer.java)
-
 package http.server;
+
+/**
+ * A simple HTTP Web Server in Java
+ * Supported HTTP methode : OPTIONS, GET, HEAD, POST, PUT, DELETE
+ *
+ * @author Branchereau Corentin
+ * @author Gravey Thibaut
+ * @version 1.0
+ */
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -105,7 +112,7 @@ public class WebServer {
 
     try {
       if (!version.equals("HTTP/1.1")) {
-        sendResponse(client, StatusCode.CODE_505, null, null, HeaderType.ERROR);
+        sendResponse(client, StatusCode.CODE_505, null, null, null ,HeaderType.ERROR);
       } else {
         switch (method) {
           case "GET":
@@ -127,14 +134,14 @@ public class WebServer {
             handleOPTION(client);
             break;
           default:
-            sendResponse(client, StatusCode.CODE_501, null, null, HeaderType.ERROR);
+            sendResponse(client, StatusCode.CODE_501, null, null, null,HeaderType.ERROR);
         }
       }
     } catch (Exception e){
       System.out.println("Error line "+e.getStackTrace()[0].getLineNumber()+" : " + e);
       e.printStackTrace();
       try{
-        sendResponse(client,StatusCode.CODE_500,null,null,HeaderType.ERROR);
+        sendResponse(client,StatusCode.CODE_500,null,null,null,HeaderType.ERROR);
       } catch (IOException ioException) {
         System.out.println("Error at sending "+StatusCode.CODE_500);
         ioException.printStackTrace();
@@ -145,12 +152,17 @@ public class WebServer {
   private void handleGET(Socket client, String path) throws IOException {
       Path filePath = getFilePath(path);
       System.out.println("FilePath after guess : "+filePath);
-      if (Files.exists(filePath)) { // if the file exist
+      if(filePath.toString().equals("./res/index.html")){ //Generate a structured index
+        String response = generateIndex();
+        sendResponse(client, StatusCode.CODE_200, "text/html", response.getBytes(),filePath.toString(),HeaderType.GET);
+      } else if(filePath.toString().startsWith("./res/source")){ //Non-Authorized
+        sendResponse(client, StatusCode.CODE_401,null,null, filePath.toString() ,HeaderType.ERROR);
+      } else if (Files.exists(filePath)) { // if the file exist
         String contentType = Files.probeContentType(filePath);
-        sendResponse(client, StatusCode.CODE_200, contentType, Files.readAllBytes(filePath),HeaderType.GET);
+        sendResponse(client, StatusCode.CODE_200, contentType, Files.readAllBytes(filePath),filePath.toString(),HeaderType.GET);
       } else { // Error 404 not found
         byte[] contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, StatusCode.CODE_404, "text/html", contentNotFound,HeaderType.GET);
+        sendResponse(client, StatusCode.CODE_404, "text/html", contentNotFound,null,HeaderType.GET);
       }
   }
 
@@ -159,9 +171,9 @@ public class WebServer {
     // Vérification de l'existence de la ressource demandée
     if(Files.exists(filePath)) {
       String contentType = Files.probeContentType(filePath);
-      sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),HeaderType.HEAD);
+      sendResponse(client, StatusCode.CODE_200, contentType,Files.readAllBytes(filePath),filePath.toString(),HeaderType.HEAD);
     } else {
-      sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
+      sendResponse(client, StatusCode.CODE_404, null, null,null, HeaderType.ERROR);
     }
   }
 
@@ -170,10 +182,10 @@ public class WebServer {
     if(Files.exists(filePath)){
         System.out.println("DELETED file : "+filePath);
         Files.delete(filePath);
-        sendResponse(client, StatusCode.CODE_200, null, null, HeaderType.DELETE);
+        sendResponse(client, StatusCode.CODE_200, null, null,filePath.toString(), HeaderType.DELETE);
     } else {
       System.out.println("File not found : "+filePath);
-      sendResponse(client, StatusCode.CODE_404, null, null, HeaderType.ERROR);
+      sendResponse(client, StatusCode.CODE_404, null, null, null,HeaderType.ERROR);
     }
   }
   
@@ -188,40 +200,70 @@ public class WebServer {
         String r = executeCommand(new String[]{"/bin/bash", "-c", chemin });
         System.out.println("exécution du fichier externe:" + r);
         byte[] successfulPOST = ("<h1> The script has executed correctly </h1>").getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,HeaderType.POST);
+        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,getFilePath(path).toString(),HeaderType.POST);
       }catch(Exception e){
         e.printStackTrace();
       }
     }else{
       StatusCode statusCode;
-        if(Files.exists(getFilePath(path))) {
-          statusCode = StatusCode.CODE_403;
-        } else {
-          statusCode = StatusCode.CODE_404;
-        }
-        sendResponse(client, statusCode, null, null, HeaderType.ERROR);
+      String contentLocation = null;
+      if(Files.exists(getFilePath(path))) {
+        statusCode = StatusCode.CODE_403;
+        contentLocation = getFilePath(path).toString();
+      } else {
+        statusCode = StatusCode.CODE_404;
+      }
+      sendResponse(client, statusCode, null, null,contentLocation, HeaderType.ERROR);
     }
+  }
+
+  private String generateIndex(){
+    StringBuilder response = new StringBuilder();
+    response.append("<h1>Voici l'index de nos ressources disponibles :</h1>").append("\n");
+    response.append("<ul>").append("\n");
+    response.append("<li>Ressources :").append("\n");
+    response.append("<ul>");
+    File mainRessource = new File("./res");
+    String[] files = mainRessource.list();
+    for(String f : files){
+      if(!f.equals("source")) {
+        response.append("<li><a href=\"/").append(f).append("\">");
+        response.append(f);
+        response.append("</a></li>").append("\n");
+      }
+    }
+    response.append("</ul>").append("\n");
+    response.append("</li>").append("\n");
+    response.append("<li>Source :").append("\n");
+    response.append("<ul>");
+    File mainSource = new File("./res/source");
+    String[] sources = mainSource.list();
+    for(String s : sources){
+      response.append("<li><a href=\"/source/").append(s).append("\">");
+      response.append(s);
+      response.append("</li>").append("\n");
+    }
+    response.append("</ul>").append("\n");
+    response.append("</li>").append("\n");
+    response.append("</ul>").append("\n");
+    return response.toString();
   }
 
   private void appendToFile(String path, Socket client,String body) throws IOException {
     if(body != null){
-      File resource = new File(path);
+      Path resourcePath = getFilePath(path);
+      File resource = resourcePath.toFile();
       boolean appendToFile = resource.exists();
-      BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(resource,appendToFile));
-      String[] parameters = body.split("&",10);
-
-      for(String param : parameters){
-          byte[] byteParam = (param + ";").getBytes();
-          fileOut.write(byteParam, 0, byteParam.length);
-      }
-      byte[] endLine = ("\r\n").getBytes();
-      fileOut.write(endLine, 0, endLine.length);
+      BufferedWriter fileOut = new BufferedWriter((new FileWriter(resource,appendToFile)));
+      fileOut.write(body);
+      String endLine = ("\r\n");
+      fileOut.write(endLine);
       fileOut.flush();
       fileOut.close();
       byte[] successfulPOST = ("<h1>The file " + path +" has been modified </h1>").getBytes(StandardCharsets.UTF_8);
-      sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,HeaderType.POST);
+      sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,resource.toString(),HeaderType.POST);
     }else{
-      sendResponse(client, StatusCode.CODE_404,null,null,HeaderType.ERROR);
+      sendResponse(client, StatusCode.CODE_404,null,null,null,HeaderType.ERROR);
     }
   }
 
@@ -268,14 +310,14 @@ public class WebServer {
     writer.flush();
     writer.close();
 
-    sendResponse(client, statusCode, null, null, HeaderType.PUT);
+    sendResponse(client, statusCode, null, null,filePath.toString(), HeaderType.PUT);
   }
 
   private void handleOPTION(Socket client) throws IOException {
-    sendResponse(client,StatusCode.CODE_200,null,null,HeaderType.OPTIONS);
+    sendResponse(client,StatusCode.CODE_200,null,null,null,HeaderType.OPTIONS);
   }
 
-  private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, HeaderType type) throws IOException {
+  private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, String contentLocation, HeaderType type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
     BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
     Date date = new Date();
@@ -285,13 +327,17 @@ public class WebServer {
     out.println("HTTP/1.1 "+status);
     out.println("Date: "+date);
 
+    if(contentLocation!=null && !contentLocation.isBlank()){
+      out.println("Content-Location: "+contentLocation.substring(1));
+    }
+
     if(type.equals(HeaderType.GET) || type.equals(HeaderType.HEAD)) {
       out.println("Content-Type: " + contentType);
       out.println("Content-Encoding: UTF-8");
     }
 
     if(type.equals(HeaderType.OPTIONS)){
-      out.print("Allow: OPTIONS, GET, HEAD, POST, PUT, DELETE");
+      out.println("Allow: OPTIONS, GET, HEAD, POST, PUT, DELETE");
     }
 
     if(content!=null){
@@ -310,6 +356,12 @@ public class WebServer {
     }
   }
 
+  /**
+   * Get a file path
+   * '/' gives the index from the page
+   * @param path the file path to find
+   * @return Path with prefix ./res
+   */
   private Path getFilePath(String path) {
     if ("/".equals(path)) {
       path = "/index.html";

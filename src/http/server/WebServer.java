@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -60,7 +62,7 @@ public class WebServer {
         // remote is now the connected socket
         BufferedReader in = new BufferedReader(new InputStreamReader(
                 remote.getInputStream()));
-        System.out.println("Connection, sending data.");
+        //System.out.println("Connection, sending data.");
         // read the data sent.
         // stop reading once a blank line is hit. This
         // blank line signals the end of the client HTTP
@@ -68,7 +70,7 @@ public class WebServer {
         String str = ".";
         StringBuilder stringBuilder = new StringBuilder();
         String headerLength = "0";
-        while (!(str=in.readLine()).isBlank()){
+        while (((str=in.readLine())!=null) && !str.isBlank()){
           stringBuilder.append(str).append("\n");
           if(str.startsWith("Content-Length:")){
             headerLength = str.substring(16);
@@ -87,10 +89,10 @@ public class WebServer {
         }
 
         String request = stringBuilder.toString();
-        System.out.println("Request :\n"+request);
-        System.out.println("Body :\n"+body);
 
-        handleClientRequest(remote, request, body);
+        if(!request.isBlank()){
+            handleClientRequest(remote, request, body);
+        }
 
         // close the connection
         remote.close();
@@ -109,6 +111,13 @@ public class WebServer {
    * @param body the client body if present
    */
   private void handleClientRequest(Socket client, String request,String body) {
+    //log the request & body
+    Date date = new Date();
+    DateFormat dateFormat = new SimpleDateFormat("hh:mm:ss");
+    System.out.println("["+dateFormat.format(date)+" from "+client.getInetAddress()+"]");
+    System.out.println("Request :\n"+request);
+    System.out.println("Body :\n"+body);
+
     //Parse the request
     String[] linesFromRequest = request.split("\n");
     String[] singleLineRequest = linesFromRequest[0].split(" ");

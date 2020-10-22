@@ -4,7 +4,7 @@ default :
 all : compile launch
 
 compile :
-	javac -d bin/ src/http/client/WebPing.java src/http/server/WebServer.java src/http/server/StatusCode.java
+	javac -d bin/ src/http/client/WebPing.java src/http/server/WebServer.java src/http/server/StatusCode.java res/source/Signup.java
 
 launch : 
 	java -cp bin/ http.server.WebServer 3000

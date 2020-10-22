@@ -1,14 +1,5 @@
 package http.server;
 
-/**
- * A simple HTTP Web Server in Java
- * Supported HTTP methode : OPTIONS, GET, HEAD, POST, PUT, DELETE
- *
- * @author Branchereau Corentin
- * @author Gravey Thibaut
- * @version 1.0
- */
-
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -18,6 +9,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+/**
+ * A simple HTTP Web Server in Java
+ * Supported HTTP methode : OPTIONS, GET, HEAD, POST, PUT, DELETE
+ *
+ * @author Branchereau Corentin
+ * @author Gravey Thibaut
+ * @version 1.0
+ */
 public class WebServer {
 
   /**

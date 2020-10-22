@@ -29,7 +29,7 @@ public enum StatusCode {
     }
 
     /**
-     * support string representation
+     * Support string representation
      * @return textual representation for HTTP response
      */
     @Override

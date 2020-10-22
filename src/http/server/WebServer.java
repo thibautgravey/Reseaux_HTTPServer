@@ -1,14 +1,5 @@
 package http.server;
 
-/**
- * A simple HTTP Web Server in Java
- * Supported HTTP methode : OPTIONS, GET, HEAD, POST, PUT, DELETE
- *
- * @author Branchereau Corentin
- * @author Gravey Thibaut
- * @version 1.0
- */
-
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -18,8 +9,20 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+/**
+ * A simple HTTP Web Server in Java
+ * Supported HTTP methods : OPTIONS, GET, HEAD, POST, PUT, DELETE
+ *
+ * @author Branchereau Corentin
+ * @author Gravey Thibaut
+ * @version 1.0
+ */
+
 public class WebServer {
 
+  /**
+   * Represent the HTTP method for the build of the response
+   */
   enum HeaderType {
     ERROR,
     GET,
@@ -31,7 +34,11 @@ public class WebServer {
   }
 
   /**
-   * WebServer constructor.
+   *  Starting the WebServer in order to handle
+   *  client's connection, their request and
+   *  send an appropriate response. Finally, close the remote connection with the client.
+   *
+   * @param port the webserver port
    */
   protected void start(int port) {
     ServerSocket s;
@@ -95,6 +102,13 @@ public class WebServer {
     }
   }
 
+  /**
+   * Handle a typical client request and his body in order to call the right HTTP-method handler
+   * It also verify that the HTTP Method requested is implemented and authorized.
+   * @param client the client sending the request
+   * @param request the client request (header)
+   * @param body the client body if present
+   */
   private void handleClientRequest(Socket client, String request,String body) {
     //Parse the request
     String[] linesFromRequest = request.split("\n");
@@ -149,6 +163,12 @@ public class WebServer {
     }
   }
 
+  /**
+   * Method that handles GET method
+   * @param client the client sending the request
+   * @param path the path of the wanted resource
+   * @throws IOException
+   */
   private void handleGET(Socket client, String path) throws IOException {
       Path filePath = getFilePath(path);
       System.out.println("FilePath after guess : "+filePath);
@@ -166,6 +186,12 @@ public class WebServer {
       }
   }
 
+  /**
+   * Method that handles HEAD method
+   * @param client the client sending the request
+   * @param path the path of the wanted resource
+   * @throws IOException
+   */
   private void handleHEAD(Socket client,String path) throws IOException {
     Path filePath = getFilePath(path);
     // Vérification de l'existence de la ressource demandée
@@ -177,6 +203,12 @@ public class WebServer {
     }
   }
 
+  /**
+   * Method that handles DELETE method
+   * @param client the client sending the request
+   * @param path the path of the wanted resource
+   * @throws IOException
+   */
   private void handleDELETE(Socket client, String path) throws IOException {
     Path filePath = getFilePath(path);
     if(Files.exists(filePath)){
@@ -188,7 +220,14 @@ public class WebServer {
       sendResponse(client, StatusCode.CODE_404, null, null, null,HeaderType.ERROR);
     }
   }
-  
+
+  /**
+   * Method that handles POST method
+   * @param client the client sending the request
+   * @param path the path of the wanted resource
+   * @param body the body of the request
+   * @throws IOException
+   */
   private void handlePOST(Socket client,String path, String body) throws IOException {
 
     if(path.endsWith(".txt")){
@@ -217,6 +256,10 @@ public class WebServer {
     }
   }
 
+  /**
+   * Generate an index.html for list available ressources on the WebServer
+   * @return the generate HTML file
+   */
   private String generateIndex(){
     StringBuilder response = new StringBuilder();
     response.append("<h1>Voici l'index de nos ressources disponibles :</h1>").append("\n");
@@ -249,6 +292,14 @@ public class WebServer {
     return response.toString();
   }
 
+  /**
+   * Append the body in parameter to the resource located by the path in parameter. If the resource exist, just append
+   * the body. If it is not, create the resource with the body for content.
+   * @param path the path of the wanted resource
+   * @param client the client sending the request
+   * @param body the body of the request
+   * @throws IOException
+   */
   private void appendToFile(String path, Socket client,String body) throws IOException {
     if(body != null){
       Path resourcePath = getFilePath(path);
@@ -267,6 +318,11 @@ public class WebServer {
     }
   }
 
+  /**
+   * Execute a command on the server terminal on Runtime
+   * @param cmd the command to execute
+   * @return response from execution
+   */
   public String executeCommand(String[] cmd) {
     StringBuffer theRun = null;
     try {
@@ -293,6 +349,13 @@ public class WebServer {
         return theRun.toString().trim();
 }
 
+  /**
+   * Method that handles PUT method
+   * @param client the client sending the request
+   * @param path the path of the wanted resource
+   * @param body the body of the request
+   * @throws IOException
+   */
   private void handlePUT(Socket client, String path, String body) throws IOException {
     Path filePath = getFilePath(path);
     File file = filePath.toFile();
@@ -313,10 +376,27 @@ public class WebServer {
     sendResponse(client, statusCode, null, null,filePath.toString(), HeaderType.PUT);
   }
 
+  /**
+   * Method that handles PUT method
+   * @param client the client sending the request
+   * @throws IOException
+   */
   private void handleOPTION(Socket client) throws IOException {
     sendResponse(client,StatusCode.CODE_200,null,null,null,HeaderType.OPTIONS);
   }
 
+  /**
+   * After a request, create an appropriate response for the client and send it depends on the HTTP method
+   * and many other variables (resource availablity, right of access, implemented http method, etc...)
+   * @param client the client sending the request and waiting for response
+   * @param status the HTTP status code to return
+   * @param contentType the content-type for header
+   * @param content the content of the response
+   * @param contentLocation the content-location for header
+   * @param type the HeaderType depends on the http request method
+   * @throws IOException
+   * @see StatusCode
+   */
   private void sendResponse(Socket client, StatusCode status, String contentType, byte[] content, String contentLocation, HeaderType type) throws IOException {
     PrintWriter out = new PrintWriter(client.getOutputStream());
     BufferedOutputStream binaryDataOutput = new BufferedOutputStream(client.getOutputStream());
@@ -357,10 +437,10 @@ public class WebServer {
   }
 
   /**
-   * Get a file path
+   * Get a file path from a resource file on the server
    * '/' gives the index from the page
-   * @param path the file path to find
-   * @return Path with prefix ./res
+   * @param path the file path to find (asked in the request)
+   * @return Path on the server with prefix ./res
    */
   private Path getFilePath(String path) {
     if ("/".equals(path)) {
@@ -370,7 +450,7 @@ public class WebServer {
   }
 
   /**
-   * Start the application.
+   * Main method starting the WebServer
    *
    * @param args the port used to start the WebServer
    */

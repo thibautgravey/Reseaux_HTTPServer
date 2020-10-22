@@ -3,6 +3,12 @@ package http.client;
 import java.net.InetAddress;
 import java.net.Socket;
 
+/**
+ * Default WebPing Class given by INSA LYON.
+ * Not used.
+ * @deprecated
+ * @author INSA LYON
+ */
 public class WebPing {
   public static void main(String[] args) {
   

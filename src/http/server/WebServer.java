@@ -69,10 +69,10 @@ public class WebServer {
         StringBuilder stringBuilder = new StringBuilder();
         String headerLength = "0";
         while (!(str=in.readLine()).isBlank()){
-            stringBuilder.append(str).append("\n");
-            if(str.startsWith("Content-Length:")){
-              headerLength = str.substring(16);
-           }
+          stringBuilder.append(str).append("\n");
+          if(str.startsWith("Content-Length:")){
+            headerLength = str.substring(16);
+          }
         }
 
         Integer bufferLength = Integer.parseInt(headerLength);
@@ -116,7 +116,7 @@ public class WebServer {
     String path = singleLineRequest[1];
     String version = singleLineRequest[2];
     String host = linesFromRequest[1].split(" ")[1];
-    
+
     List<String> headers = new ArrayList<>();
     for (int h = 2; h < linesFromRequest.length; h++) {
       String header = linesFromRequest[h];
@@ -169,25 +169,25 @@ public class WebServer {
    * @throws IOException
    */
   private void handleGET(Socket client, String path) throws IOException {
-      int paramIndex = path.indexOf("?");
-      String pathWithoutParam = path;
-      if(paramIndex != -1){
-         pathWithoutParam = path.substring(0,paramIndex);
-      }
-      Path filePath = getFilePath(pathWithoutParam);
-      System.out.println("FilePath after guess : "+filePath);
-      if(filePath.toString().equals("./res/index.html")){ //Generate a structured index
-        String response = generateIndex();
-        sendResponse(client, StatusCode.CODE_200, "text/html", response.getBytes(),filePath.toString(),HeaderType.GET);
-      } else if(filePath.toString().startsWith("./res/source")){ //Non-Authorized
-        sendResponse(client, StatusCode.CODE_401,null,null, filePath.toString() ,HeaderType.ERROR);
-      } else if (Files.exists(filePath)) { // if the file exist
-        String contentType = Files.probeContentType(filePath);
-        sendResponse(client, StatusCode.CODE_200, contentType, Files.readAllBytes(filePath),filePath.toString(),HeaderType.GET);
-      } else { // Error 404 not found
-        byte[] contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, StatusCode.CODE_404, "text/html", contentNotFound,null,HeaderType.GET);
-      }
+    int paramIndex = path.indexOf("?");
+    String pathWithoutParam = path;
+    if(paramIndex != -1){
+      pathWithoutParam = path.substring(0,paramIndex);
+    }
+    Path filePath = getFilePath(pathWithoutParam);
+    System.out.println("FilePath after guess : "+filePath);
+    if(filePath.toString().equals("./res/index.html")){ //Generate a structured index
+      String response = generateIndex();
+      sendResponse(client, StatusCode.CODE_200, "text/html", response.getBytes(),filePath.toString(),HeaderType.GET);
+    } else if(filePath.toString().startsWith("./res/source")){ //Non-Authorized
+      sendResponse(client, StatusCode.CODE_401,null,null, filePath.toString() ,HeaderType.ERROR);
+    } else if (Files.exists(filePath)) { // if the file exist
+      String contentType = Files.probeContentType(filePath);
+      sendResponse(client, StatusCode.CODE_200, contentType, Files.readAllBytes(filePath),filePath.toString(),HeaderType.GET);
+    } else { // Error 404 not found
+      byte[] contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
+      sendResponse(client, StatusCode.CODE_404, "text/html", contentNotFound,null,HeaderType.GET);
+    }
   }
 
   /**
@@ -216,9 +216,9 @@ public class WebServer {
   private void handleDELETE(Socket client, String path) throws IOException {
     Path filePath = getFilePath(path);
     if(Files.exists(filePath)){
-        System.out.println("DELETED file : "+filePath);
-        Files.delete(filePath);
-        sendResponse(client, StatusCode.CODE_200, null, null,filePath.toString(), HeaderType.DELETE);
+      System.out.println("DELETED file : "+filePath);
+      Files.delete(filePath);
+      sendResponse(client, StatusCode.CODE_200, null, null,filePath.toString(), HeaderType.DELETE);
     } else {
       System.out.println("File not found : "+filePath);
       sendResponse(client, StatusCode.CODE_404, null, null, null,HeaderType.ERROR);
@@ -348,28 +348,28 @@ public class WebServer {
   private String executeCommand(String[] cmd) {
     StringBuffer theRun = null;
     try {
-        Process process = Runtime.getRuntime().exec(cmd);
+      Process process = Runtime.getRuntime().exec(cmd);
 
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()));
-        int read;
-        char[] buffer = new char[4096];
-        StringBuffer output = new StringBuffer();
-        while ((read = reader.read(buffer)) > 0) {
-            theRun = output.append(buffer, 0, read);
-        }
-        reader.close();
-        process.waitFor();
+      BufferedReader reader = new BufferedReader(
+              new InputStreamReader(process.getInputStream()));
+      int read;
+      char[] buffer = new char[4096];
+      StringBuffer output = new StringBuffer();
+      while ((read = reader.read(buffer)) > 0) {
+        theRun = output.append(buffer, 0, read);
+      }
+      reader.close();
+      process.waitFor();
 
     } catch (IOException e) {
       System.out.println(e);
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     } catch (InterruptedException e) {
       System.out.println(e);
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     }
-        return theRun.toString().trim();
-}
+    return theRun.toString().trim();
+  }
 
   /**
    * Method that handles PUT method

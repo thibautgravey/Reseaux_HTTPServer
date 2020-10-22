@@ -315,6 +315,12 @@ public class WebServer {
     }
   }
 
+  /**
+   * Execute a dynamic script on the WebServer
+   * @param client the client sending the request
+   * @param path the path of the dynamic script resource
+   * @param body the body of the request
+   */
   private void executeDynamicScript(Socket client,String path,String body){
     try{
       String[] parameters = body.split("&",10);
@@ -335,6 +341,11 @@ public class WebServer {
     }
   }
 
+  /**
+   * Execute a command on the server terminal on Runtime
+   * @param cmd the cmd to execute
+   * @return response from execution
+   */
   private String executeCommand(String[] cmd) {
     StringBuffer theRun = null;
     try {

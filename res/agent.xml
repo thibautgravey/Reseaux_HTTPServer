@@ -1,0 +1,14 @@
+<personnes>
+    <personne>
+        <nom>Dupond</nom>
+        <service>Achats</service>
+    </personne>
+    <personne>
+        <nom>Durand</nom>
+        <service>Achats</service>
+    </personne>
+    <personne>
+        <nom>Dupuis</nom>
+        <service>Courrier</service>
+    </personne>
+</personnes>

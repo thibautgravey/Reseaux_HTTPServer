@@ -1,13 +1,10 @@
 package http.server;
 
 /**
- * Example program from Chapter 1 Programming Spiders, Bots and Aggregators in
- * Java Copyright 2001 by Jeff Heaton
- * <p>
- * WebServer is a very simple web-server. Any request is responded with a very
- * simple web-page.
+ * Represent the return statusCode from HTTP Request
  *
- * @author Jeff Heaton
+ * @author Branchereau Corentin
+ * @author Gravey Thibaut
  * @version 1.0
  */
 public enum StatusCode {
@@ -15,6 +12,7 @@ public enum StatusCode {
     CODE_200("200 OK"),
     CODE_201("201 Created"),
     CODE_204("204 No Content"),
+    CODE_401("401 Unauthorized"),
     CODE_403("403 Forbidden"),
     CODE_404("404 Not Found"),
     CODE_500("500 Internal Server Error"),
@@ -23,10 +21,18 @@ public enum StatusCode {
 
     private final String text;
 
+    /**
+     * String representation of a StatusCode for HTTP response
+     * @param text
+     */
     StatusCode(String text){
         this.text = text;
     }
 
+    /**
+     * support string representation
+     * @return textual representation for HTTP response
+     */
     @Override
     public String toString(){
         return this.text;

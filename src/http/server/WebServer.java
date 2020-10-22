@@ -185,7 +185,12 @@ public class WebServer {
       String contentType = Files.probeContentType(filePath);
       sendResponse(client, StatusCode.CODE_200, contentType, Files.readAllBytes(filePath),filePath.toString(),HeaderType.GET);
     } else { // Error 404 not found
-      byte[] contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
+      byte[] contentNotFound;
+      if(Files.exists(getFilePath("/404NotFound.html"))){
+        contentNotFound = Files.readAllBytes(getFilePath("/404NotFound.html"));
+      } else {
+        contentNotFound = "<h1>404 Not found :(</h1>".getBytes(StandardCharsets.UTF_8);
+      }
       sendResponse(client, StatusCode.CODE_404, "text/html", contentNotFound,null,HeaderType.GET);
     }
   }
@@ -434,8 +439,7 @@ public class WebServer {
     }
 
     if(type.equals(HeaderType.GET) || type.equals(HeaderType.HEAD)) {
-      out.println("Content-Type: " + contentType);
-      out.println("Content-Encoding: UTF-8");
+      out.println("Content-Type: " + contentType+";charset=UTF-8");
     }
 
     if(type.equals(HeaderType.OPTIONS)){

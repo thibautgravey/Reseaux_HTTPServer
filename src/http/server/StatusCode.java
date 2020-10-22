@@ -14,6 +14,7 @@ public enum StatusCode {
 
     CODE_200("200 OK"),
     CODE_201("201 Created"),
+    CODE_204("204 No Content"),
     CODE_403("403 Forbidden"),
     CODE_404("404 Not Found"),
     CODE_500("500 Internal Server Error"),

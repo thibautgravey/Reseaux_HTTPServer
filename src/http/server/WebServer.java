@@ -143,7 +143,12 @@ public class WebServer {
   }
 
   private void handleGET(Socket client, String path) throws IOException {
-      Path filePath = getFilePath(path);
+      int paramIndex = path.indexOf("?");
+      String pathWithoutParam = path;
+      if(paramIndex != -1){
+         pathWithoutParam = path.substring(0,paramIndex);
+      }
+      Path filePath = getFilePath(pathWithoutParam);
       System.out.println("FilePath after guess : "+filePath);
       if (Files.exists(filePath)) { // if the file exist
         String contentType = Files.probeContentType(filePath);
@@ -178,20 +183,12 @@ public class WebServer {
   }
   
   private void handlePOST(Socket client,String path, String body) throws IOException {
-
+    System.out.println(body);
     if(path.endsWith(".txt")){
       appendToFile(path, client, body);
     }
     else if(path.endsWith(".java")){
-      try{
-        String chemin ="java -classpath /media/corentin/Data/Cours/PR-Reseaux/TP/Serveur_HTTP/Reseaux_HTTPServer/bin source."+path.substring(1, path.length()-5) + " " + body;
-        String r = executeCommand(new String[]{"/bin/bash", "-c", chemin });
-        System.out.println("exécution du fichier externe:" + r);
-        byte[] successfulPOST = ("<h1> The script has executed correctly </h1>").getBytes(StandardCharsets.UTF_8);
-        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,HeaderType.POST);
-      }catch(Exception e){
-        e.printStackTrace();
-      }
+      executeDynamicScript(client,path,body);
     }else{
       StatusCode statusCode;
         if(Files.exists(getFilePath(path))) {
@@ -208,12 +205,8 @@ public class WebServer {
       File resource = new File(path);
       boolean appendToFile = resource.exists();
       BufferedOutputStream fileOut = new BufferedOutputStream(new FileOutputStream(resource,appendToFile));
-      String[] parameters = body.split("&",10);
-
-      for(String param : parameters){
-          byte[] byteParam = (param + ";").getBytes();
-          fileOut.write(byteParam, 0, byteParam.length);
-      }
+      byte[] byteParam = (body).getBytes();
+      fileOut.write(byteParam, 0, byteParam.length);
       byte[] endLine = ("\r\n").getBytes();
       fileOut.write(endLine, 0, endLine.length);
       fileOut.flush();
@@ -225,7 +218,27 @@ public class WebServer {
     }
   }
 
-  public String executeCommand(String[] cmd) {
+  private void executeDynamicScript(Socket client,String path,String body){
+    try{
+      String[] parameters = body.split("&",10);
+      String arguments = "";
+      for(String param : parameters){
+        arguments += param +" ";
+      }
+      if(!arguments.equals("")){
+        String chemin ="java -classpath ./bin source."+path.substring(1, path.length()-5) + " " + arguments;
+        String response = executeCommand(new String[]{"/bin/bash", "-c", chemin });
+        byte[] successfulPOST = response.getBytes(StandardCharsets.UTF_8);
+        sendResponse(client, StatusCode.CODE_200,"text/html",successfulPOST,HeaderType.POST);
+      }else{
+        sendResponse(client, StatusCode.CODE_204,null,null,HeaderType.POST);
+      }
+    }catch(Exception e){
+      e.printStackTrace();
+    }
+  }
+
+  private String executeCommand(String[] cmd) {
     StringBuffer theRun = null;
     try {
         Process process = Runtime.getRuntime().exec(cmd);

@@ -1,0 +1,12 @@
+<h1 style="text-align:center">Hi <span id="name"></span>! It's nice to see you again !</h1>
+
+<img style="margin-left:calc( 50vw - 200px );margin-top:200px" src="/lama.jpg" width="400px"/>
+
+<script>
+    var name = location.search.split('name=')[1] ? location.search.split('name=')[1] : '';
+    var span = document.getElementById("name");
+    span.innerHTML = name;
+    if(name==''){
+        window.location = './signup.html';
+    }
+</script>
